@@ -100,64 +100,81 @@
 
   // ---------- Desplegable "Ver la opinión del especialista" ----------
   function initSpecialistToggle() {
-    var toggleBtn = document.querySelector('button');
-    while (toggleBtn) {
-      if (toggleBtn.textContent.indexOf('opini\00f3n del especialista') !== -1) break;
-      toggleBtn = toggleBtn.nextElementSibling;
+    var btns = document.querySelectorAll('button');
+    var toggleBtn = null;
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.indexOf('opinión del especialista') !== -1) {
+        toggleBtn = btns[i];
+        break;
+      }
     }
     if (!toggleBtn) return;
 
     var panel = toggleBtn.nextElementSibling;
     if (!panel) return;
 
-    var chevron = toggleBtn.querySelector('svg.lucide-chevron-down');
+    var chevron = null;
+    var svgs = toggleBtn.querySelectorAll('svg');
+    for (var j = 0; j < svgs.length; j++) {
+      if (svgs[j].getAttribute('class') && svgs[j].getAttribute('class').indexOf('chevron-down') !== -1) {
+        chevron = svgs[j];
+        break;
+      }
+    }
+
     var isOpen = panel.className.indexOf('grid-rows-[1fr]') !== -1;
 
     function setState(open) {
       isOpen = open;
       if (open) {
-        panel.classList.remove('grid-rows-[0fr]', 'opacity-0');
-        panel.classList.add('grid-rows-[1fr]', 'opacity-100');
+        panel.classList.remove('grid-rows-[0fr]');
+        panel.classList.remove('opacity-0');
+        panel.classList.add('grid-rows-[1fr]');
+        panel.classList.add('opacity-100');
         if (chevron) chevron.classList.add('rotate-180');
       } else {
-        panel.classList.remove('grid-rows-[1fr]', 'opacity-100');
-        panel.classList.add('grid-rows-[0fr]', 'opacity-0');
+        panel.classList.remove('grid-rows-[1fr]');
+        panel.classList.remove('opacity-100');
+        panel.classList.add('grid-rows-[0fr]');
+        panel.classList.add('opacity-0');
         if (chevron) chevron.classList.remove('rotate-180');
       }
     }
 
-    toggleBtn.addEventListener('click', function () { setState(!isOpen); });
+    toggleBtn.addEventListener('click', function () {
+      setState(!isOpen);
+    });
   }
 
   // ---------- Carrusel "Diseñado para acompañarte" ----------
   function initGallery() {
-    var section = findSectionByHeading('Dise\00f1ado para acompa\00f1arte en cada gesto');
-    if (!section) return;
-
-    var viewport = section.querySelector('.overflow-hidden.rounded-\\[2rem\\]') || section.querySelector('.overflow-hidden');
-    if (!viewport) return;
-
-    var track = viewport.querySelector('.lumina-gallery-track');
-    if (!track) {
-      track = viewport.firstElementChild;
-      if (track) track.classList.add('lumina-gallery-track');
-    }
-    if (!track) return;
-
-    var prevBtn = section.querySelector('button[aria-label="Anterior"], button[aria-label=Anterior]');
-    var nextBtn = section.querySelector('button[aria-label="Siguiente"], button[aria-label=Siguiente]');
+    var prevBtn = document.querySelector('button[aria-label="Anterior"]');
+    var nextBtn = document.querySelector('button[aria-label="Siguiente"]');
     if (!prevBtn || !nextBtn) return;
 
-    var slides = Array.from(track.children);
+    var wrapper = prevBtn.parentElement;
+    var track = wrapper ? wrapper.querySelector('.flex') : null;
+    if (!track) return;
+
+    var slides = Array.prototype.slice.call(track.children);
     var count = slides.length;
     if (!count) return;
 
-    var dotsContainer = section.querySelector('.mt-5.flex.justify-center.gap-2');
-    var dots = dotsContainer ? dotsContainer.querySelectorAll('button') : [];
+    var dotsContainer = null;
+    if (wrapper.parentElement) {
+      var candidates = wrapper.parentElement.querySelectorAll('div');
+      for (var i = 0; i < candidates.length; i++) {
+        var cls = candidates[i].getAttribute('class') || '';
+        if (cls.indexOf('justify-center') !== -1 && cls.indexOf('gap-2') !== -1) {
+          dotsContainer = candidates[i];
+          break;
+        }
+      }
+    }
+    var dots = dotsContainer ? Array.prototype.slice.call(dotsContainer.querySelectorAll('button')) : [];
 
     var index = 0;
     var autoplayTimer = null;
-    var isPaused = false;
 
     function perView() {
       return window.innerWidth >= 640 ? 2 : 1;
@@ -165,20 +182,21 @@
 
     function render() {
       var pv = perView();
-      var maxTranslate = Math.max(0, count - pv);
-      var translateIndex = Math.min(index, maxTranslate);
-      var offset = (translateIndex * 100) / pv;
-      track.style.transform = 'translate3d(-' + offset + '%,0,0)';
+      var maxTranslateIndex = Math.max(0, count - pv);
+      var translateIndex = Math.min(index, maxTranslateIndex);
+      var slideWidthPct = 100 / pv;
+      var offset = translateIndex * slideWidthPct;
+      track.style.transform = 'translate3d(-' + offset + '%,0px,0px)';
 
-      dots.forEach(function (dot, i) {
-        if (i === index) {
-          dot.classList.remove('w-2.5', 'bg-[#3B2F23]/25');
-          dot.classList.add('w-7', 'bg-[#CE5A3C]');
+      for (var d = 0; d < dots.length; d++) {
+        if (d === index) {
+          dots[d].classList.remove('w-2.5', 'bg-[#3B2F23]/25');
+          dots[d].classList.add('w-7', 'bg-[#CE5A3C]');
         } else {
-          dot.classList.remove('w-7', 'bg-[#CE5A3C]');
-          dot.classList.add('w-2.5', 'bg-[#3B2F23]/25');
+          dots[d].classList.remove('w-7', 'bg-[#CE5A3C]');
+          dots[d].classList.add('w-2.5', 'bg-[#3B2F23]/25');
         }
-      });
+      }
     }
 
     function goTo(i, userAction) {
@@ -187,16 +205,24 @@
       if (userAction) restartAutoplay();
     }
 
-    function startAutoplay() {
-      if (autoplayTimer) clearInterval(autoplayTimer);
-      if (isPaused) return;
-      autoplayTimer = setInterval(function () { goTo(index + 1, false); }, 4500);
-    }
+    prevBtn.addEventListener('click', function () { goTo(index - 1, true); });
+    nextBtn.addEventListener('click', function () { goTo(index + 1, true); });
+    dots.forEach(function (dot, i) {
+      dot.addEventListener('click', function () { goTo(i, true); });
+    });
+    window.addEventListener('resize', render);
 
+    function startAutoplay() {
+      autoplayTimer = setInterval(function () { goTo(index + 1, false); }, 4000);
+    }
     function restartAutoplay() {
       if (autoplayTimer) clearInterval(autoplayTimer);
       startAutoplay();
     }
+
+    render();
+    startAutoplay();
+  }
 
     // Eventos de navegación
     prevBtn.addEventListener('click', function () { goTo(index - 1, true); });
